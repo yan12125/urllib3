@@ -19,13 +19,14 @@ except ImportError: # `poll` doesn't exist on OSX and other platforms
     except ImportError: # `select` doesn't exist on AppEngine.
         select = False
 
-try:
+try: # Python 3.2+
     from ssl import SSLContext, PROTOCOL_SSLv23
-except ImportError: # python < 3.2
+except ImportError:
     SSLContext = False
-try:
+
+try: # OpenSSL with SNI
     from ssl import HAS_SNI
-except ImportError: # openssl without SNI
+except ImportError:
     HAS_SNI = False
 
 from .packages import six
@@ -261,14 +262,16 @@ def is_connection_dropped(conn):
             # Either data is buffered (bad), or the connection is dropped.
             return True
 
+
 def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                     ca_certs=None, server_hostname=None):
     """
     All arguments except `server_hostname` have the same meaning as for
-    :func:`ssl.wrap_socket`
+    :func:`ssl.wrap_socket`. If OpenSSL with SNI is available, then
+    `server_hostname` is used for SNI.
 
     :param server_hostname:
-        Hostname of the expected certificate
+        Hostname of the expected certificate.
     """
     if SSLContext: # Platform-specific: Python >= 3.2
         context = SSLContext(PROTOCOL_SSLv23)
@@ -280,7 +283,7 @@ def ssl_wrap_socket(sock, keyfile=None, certfile=None, cert_reqs=CERT_NONE,
                 raise SSLError(e)
         if certfile != None:
             context.load_cert_chain(certfile, keyfile)
-        if HAS_SNI: # Platform-specific: OpenSSL with enabled SNI
+        if HAS_SNI: # Platform-specific: OpenSSL with SNI
             return context.wrap_socket(sock, server_hostname=server_hostname)
         return context.wrap_socket(sock)
 
