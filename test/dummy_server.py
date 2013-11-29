@@ -39,6 +39,9 @@ class TestingApp(object):
         size = int(request.params.get('upload_size', '0'))
         file = request.params.get(param)
 
+        if file == None:
+            return Response("Missing parameter: %s" % param, status='400')
+
         if not isinstance(file, FieldStorage):
             return Response("Not a file: %s" % param, status='400')
 

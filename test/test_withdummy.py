@@ -21,7 +21,7 @@ class TestConnectionPool(unittest.TestCase):
             r = self.http_pool.get_url('/', retries=1)
             if r.data != "Dummy server!":
                 raise Exception("Got unexpected response: %s" % r.data)
-        except Exception, e:
+        except MaxRetryError, e:
             raise Exception("Dummy server not running, make sure HOST and PORT correspond to the dummy server: %s" % e.message)
 
         return super(TestConnectionPool, self).__init__(*args, **kw)
@@ -57,10 +57,22 @@ class TestConnectionPool(unittest.TestCase):
         r = self.http_pool.post_url('/upload', fields=fields)
         self.assertEquals(r.status, 200, r.data)
 
-    def test_unicode_upload(self):
-        fields = {
-            u'\xe2\x99\xa5': (u'\xe2\x99\xa5.txt', u'\xe2\x99\xa5'),
+    def _make_fields(self, s):
+        return {
+            u'upload_param': s,
+            u'upload_filename': '%s.txt' % s,
+            u'upload_size': u'3',
+            s: ('%s.txt' % s, s),
         }
+
+    def test_unicode_decoded(self):
+        fields = self._make_fields('\xe2\x99\xa5')
+
+        r = self.http_pool.post_url('/upload', fields=fields)
+        self.assertEquals(r.status, 200, r.data)
+
+    def test_unicode_encoded(self):
+        fields = self._make_fields(u'\u2665')
 
         r = self.http_pool.post_url('/upload', fields=fields)
         self.assertEquals(r.status, 200, r.data)

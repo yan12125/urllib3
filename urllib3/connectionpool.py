@@ -10,7 +10,8 @@ except ImportError, e:
 try:
     import ssl
 except ImportError, e:
-    ssl = None
+    class ssl(object):
+        SSLError = None
 
 from urllib import urlencode
 from httplib import HTTPConnection, HTTPSConnection, HTTPException
@@ -106,7 +107,28 @@ class HTTPResponse(object):
 
 ## Connection objects
 
-class VerifiedHTTPSConnection(HTTPSConnection):
+class StreamableMixin(object):
+    def send(self, data):
+        if isinstance(data, str):
+            HTTPConnection.send(self, data)
+        elif hasattr(data, '__iter__'):
+            for chunk in data:
+                HTTPConnection.send(self, chunk)
+        else:
+            raise TypeError("data object is not an iterable", data)
+
+class StreamableHTTPConnection(HTTPConnection, StreamableMixin):
+    # FIXME: Hack for old-style Python classes with broken inheritance 
+    def send(self, data):
+        StreamableMixin.send(self, data)
+
+class StreamableHTTPSConnection(HTTPSConnection, StreamableMixin):
+    # FIXME: Hack for old-style Python classes with broken inheritance 
+    def send(self, data):
+        StreamableMixin.send(self, data)
+
+
+class VerifiedHTTPSConnection(StreamableHTTPSConnection):
     """
     Based on httplib.HTTPSConnection but wraps the socket with SSL certification.
     """
@@ -189,7 +211,7 @@ class HTTPConnectionPool(object):
         """
         self.num_connections += 1
         log.info("Starting new HTTP connection (%d): %s" % (self.num_connections, self.host))
-        return HTTPConnection(host=self.host, port=self.port)
+        return StreamableHTTPConnection(host=self.host, port=self.port)
 
     def _get_conn(self, timeout=None):
         """
@@ -369,7 +391,7 @@ class HTTPSConnectionPool(HTTPConnectionPool):
         log.info("Starting new HTTPS connection (%d): %s" % (self.num_connections, self.host))
 
         if not ssl:
-            return HTTPSConnection(host=self.host, port=self.port)
+            return StreamableHTTPSConnection(host=self.host, port=self.port)
 
         connection = VerifiedHTTPSConnection(host=self.host, port=self.port)
         connection.set_cert(key_file=self.key_file, cert_file=self.cert_file, cert_reqs=self.cert_reqs, ca_certs=self.ca_certs)
