@@ -23,6 +23,7 @@ from .exceptions import (
     TimeoutError,
     InsecureRequestWarning,
     NewConnectionError,
+    FailedTunnelError,
 )
 from .packages.ssl_match_hostname import CertificateError
 from .packages import six
@@ -559,9 +560,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             conn.timeout = timeout_obj.connect_timeout
 
             # Make the request on the base connection object.
-            base_response = self._make_request(conn, method, url,
-                                               timeout=timeout_obj,
-                                               body=body, headers=headers)
+            try:
+                base_response = self._make_request(conn, method, url,
+                                                   timeout=timeout_obj,
+                                                   body=body, headers=headers)
+            except FailedTunnelError as e:
+                base_response = e.response
 
             # Pass method to Response for length checking
             response_kw['request_method'] = method

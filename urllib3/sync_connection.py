@@ -282,8 +282,9 @@ class SyncHTTP1Connection(object):
                 SystemTimeWarning
             )
 
+        server_hostname = self._tunnel_host or self._host
         conn = ssl_util.ssl_wrap_socket(
-            conn, server_hostname=self._host, ssl_context=ssl_context
+            conn, server_hostname=server_hostname, ssl_context=ssl_context
         )
 
         if fingerprint:

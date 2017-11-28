@@ -312,3 +312,23 @@ class HTTPHeaderDict(MutableMapping):
             headers.append((key, value.strip()))
 
         return cls(headers)
+
+    # Adapted from python3.6/email/message.py
+    # Needed by http.cookiejar
+    def get_all(self, name, failobj=None):
+        """Return a list of all the values for the named field.
+
+        These will be sorted in the order they appeared in the original
+        message, and may contain duplicates.  Any fields deleted and
+        re-inserted are always appended to the header list.
+
+        If no such fields exist, failobj is returned (defaults to None).
+        """
+        values = []
+        name = name.lower()
+        for k, v in self.iteritems():
+            if k.lower() == name:
+                values.append(v)
+        if not values:
+            return failobj
+        return values
